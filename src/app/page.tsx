@@ -40,6 +40,7 @@ function App() {
     // Format as dd/mm/yyyy
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   });
+  const [selectedHawker, setSelectedHawker] = useState<any | null>(null);
 
   // Helper to parse dd-mm-yyyy to Date
   function parseInputDate(input: string) {
@@ -115,10 +116,49 @@ function App() {
           <p className="text-center text-gray-400 mt-10">No results found.</p>
         ) : (
           filtered.map((hawker) => (
-            <HawkerCard key={hawker.id} hawker={hawker} />
+            <div
+              key={hawker.id}
+              onClick={() => setSelectedHawker(
+                closureRecords.find((rec) => rec._id.toString() === hawker.id)
+              )}
+              className="cursor-pointer"
+            >
+              <HawkerCard hawker={hawker} />
+            </div>
           ))
         )}
       </div>
+
+      {/* Modal */}
+      {selectedHawker && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+          onClick={() => setSelectedHawker(null)}
+        >
+          <div
+            className="bg-gray-800 rounded-lg p-6 max-w-lg w-full relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-white text-2xl"
+              onClick={() => setSelectedHawker(null)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-2">{selectedHawker.name}</h2>
+            {selectedHawker.photourl && (
+              <img
+                src={selectedHawker.photourl}
+                alt={selectedHawker.name}
+                className="mb-4 rounded shadow w-full object-cover max-h-64"
+              />
+            )}
+            <p className="mb-2 text-gray-300">{selectedHawker.address_myenv}</p>
+            <p className="mb-4">{selectedHawker.description_myenv}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
