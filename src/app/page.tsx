@@ -37,8 +37,17 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().slice(0, 10); // yyyy-mm-dd
+    // Format as dd/mm/yyyy
+    return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   });
+
+  // Helper to parse dd-mm-yyyy to Date
+  function parseInputDate(input: string) {
+    const [d, m, y] = input.split('-');
+    if (!d || !m || !y) return null;
+    // Months are 0-indexed in JS Date
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
 
   useEffect(() => {
     fetch(CLOSURE_API_URL)
@@ -49,7 +58,8 @@ function App() {
       });
   }, []);
 
-  const dateObj = new Date(date);
+  // Use parseDate for user input as well
+  const dateObj = parseDate(date) || new Date();
 
   // Filter and map for display
   const filtered = closureRecords
@@ -85,11 +95,13 @@ function App() {
       {/* Date Picker */}
       <div className="flex justify-center mb-4">
         <input
-          type="date"
+          type="text"
           className="input input-bordered"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          max="2100-12-31"
+          placeholder="dd/mm/yyyy"
+          pattern="\d{2}/\d{2}/\d{4}"
+          maxLength={10}
         />
       </div>
 
