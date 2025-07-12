@@ -5,34 +5,68 @@ import HawkerCard from '../components/HawkerCard';
 import SortFilterBar from '../components/SortFilterBar';
 import { HawkerCentre } from '../types/hawker';
 
-const API_URL =
-  'https://data.gov.sg/api/action/datastore_search?resource_id=d_68a42f09f350881996d83f9cd73ab02f&limit=200';
+const CLOSURE_API_URL =
+  'https://data.gov.sg/api/action/datastore_search?resource_id=d_bda4baa634dd1cc7a6c7cad5f19e2d68&limit=300';
+
+function parseDate(dateStr: string) {
+  if (!dateStr || dateStr === 'TBC' || dateStr === 'NA') return null;
+  const [d, m, y] = dateStr.split('/');
+  return new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+}
+
+function isClosedOnDate(centre: any, date: Date) {
+  const periods = [
+    ['q1_cleaningstartdate', 'q1_cleaningenddate'],
+    ['q2_cleaningstartdate', 'q2_cleaningenddate'],
+    ['q3_cleaningstartdate', 'q3_cleaningenddate'],
+    ['q4_cleaningstartdate', 'q4_cleaningenddate'],
+    ['other_works_startdate', 'other_works_enddate'],
+  ];
+  for (const [startKey, endKey] of periods) {
+    const start = parseDate(centre[startKey]);
+    const end = parseDate(centre[endKey]);
+    if (start && end && date >= start && date <= end) return true;
+  }
+  return false;
+}
 
 function App() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('');
-  const [hawkers, setHawkers] = useState<HawkerCentre[]>([]);
+  const [closureRecords, setClosureRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().slice(0, 10); // yyyy-mm-dd
+  });
 
   useEffect(() => {
-    fetch(API_URL)
+    fetch(CLOSURE_API_URL)
       .then((res) => res.json())
       .then((data) => {
-        // Map API records to your HawkerCentre type
-        const mapped: HawkerCentre[] = data.result.records.map((rec: any) => ({
-          id: rec._id.toString(),
-          name: rec.name_of_centre,
-          address: rec.location_of_centre,
-          isOpen: false, // You can update this logic if you have open/close info
-          openingHours: '', // No opening hours in API, leave blank or set default
-        }));
-        setHawkers(mapped);
+        setClosureRecords(data.result.records);
         setLoading(false);
       });
   }, []);
 
-  const filtered = hawkers
-    .filter((h) => h.name.toLowerCase().includes(search.toLowerCase()))
+  const dateObj = new Date(date);
+
+  // Filter and map for display
+  const filtered = closureRecords
+    .map((rec) => {
+      const isOpen = !isClosedOnDate(rec, dateObj);
+      return {
+        id: rec._id.toString(),
+        name: rec.name,
+        address: rec.address_myenv,
+        isOpen,
+      } as HawkerCentre;
+    })
+    .filter(
+      (h) =>
+        h.name.toLowerCase().includes(search.toLowerCase()) ||
+        h.address.toLowerCase().includes(search.toLowerCase())
+    )
     .sort((a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'status') return Number(b.isOpen) - Number(a.isOpen);
@@ -47,6 +81,17 @@ function App() {
           check if your hawker centre is open today!
         </div>
       </h1>
+
+      {/* Date Picker */}
+      <div className="flex justify-center mb-4">
+        <input
+          type="date"
+          className="input input-bordered"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          max="2100-12-31"
+        />
+      </div>
 
       <SearchBar searchTerm={search} onChange={setSearch} />
       <SortFilterBar onSortChange={setSort} />
