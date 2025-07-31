@@ -150,6 +150,11 @@ function App() {
                   alt={selectedHawker.name}
                   fill
                   className="rounded shadow object-cover"
+                  onError={(e) => {
+                    const imgElement = e.target as HTMLImageElement;
+                    imgElement.style.display = 'none';
+                  }}
+                  unoptimized // This will bypass Next.js image optimization for external URLs that might be problematic
                 />
               </div>
             )}
