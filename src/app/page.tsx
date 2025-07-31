@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import SearchBar from '../components/SearchBar';
 import HawkerCard from '../components/HawkerCard';
 import SortFilterBar from '../components/SortFilterBar';
 import { HawkerCentre } from '../types/hawker';
+import { ClosureRecord } from '../types/closure';
 
 const CLOSURE_API_URL =
   'https://data.gov.sg/api/action/datastore_search?resource_id=d_bda4baa634dd1cc7a6c7cad5f19e2d68&limit=300';
@@ -14,8 +16,8 @@ function parseDate(dateStr: string) {
   return new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
 }
 
-function isClosedOnDate(centre: any, date: Date) {
-  const periods = [
+function isClosedOnDate(centre: ClosureRecord, date: Date) {
+  const periods: Array<[keyof ClosureRecord, keyof ClosureRecord]> = [
     ['q1_cleaningstartdate', 'q1_cleaningenddate'],
     ['q2_cleaningstartdate', 'q2_cleaningenddate'],
     ['q3_cleaningstartdate', 'q3_cleaningenddate'],
@@ -23,8 +25,8 @@ function isClosedOnDate(centre: any, date: Date) {
     ['other_works_startdate', 'other_works_enddate'],
   ];
   for (const [startKey, endKey] of periods) {
-    const start = parseDate(centre[startKey]);
-    const end = parseDate(centre[endKey]);
+    const start = parseDate(String(centre[startKey]));
+    const end = parseDate(String(centre[endKey]));
     if (start && end && date >= start && date <= end) return true;
   }
   return false;
@@ -33,22 +35,15 @@ function isClosedOnDate(centre: any, date: Date) {
 function App() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('');
-  const [closureRecords, setClosureRecords] = useState<any[]>([]);
+  const [closureRecords, setClosureRecords] = useState<ClosureRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => {
     const today = new Date();
     // Format as dd/mm/yyyy
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   });
-  const [selectedHawker, setSelectedHawker] = useState<any | null>(null);
+  const [selectedHawker, setSelectedHawker] = useState<ClosureRecord | null>(null);
 
-  // Helper to parse dd-mm-yyyy to Date
-  function parseInputDate(input: string) {
-    const [d, m, y] = input.split('-');
-    if (!d || !m || !y) return null;
-    // Months are 0-indexed in JS Date
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  }
 
   useEffect(() => {
     fetch(CLOSURE_API_URL)
@@ -87,7 +82,7 @@ function App() {
   return (
     <div className="min-h-screen text-white px-4 py-10">
       <h1 className="text-4xl font-bold text-center mb-4">
-        "can makan anot?"
+        &ldquo;can makan anot?&rdquo;
         <div className="text-2xl mt-1 font-normal">
           check if your hawker centre is open today!
         </div>
@@ -118,9 +113,10 @@ function App() {
           filtered.map((hawker) => (
             <div
               key={hawker.id}
-              onClick={() => setSelectedHawker(
-                closureRecords.find((rec) => rec._id.toString() === hawker.id)
-              )}
+              onClick={() => {
+                const found = closureRecords.find((rec) => rec._id.toString() === hawker.id);
+                if (found) setSelectedHawker(found);
+              }}
               className="cursor-pointer"
             >
               <HawkerCard hawker={hawker} />
@@ -148,11 +144,14 @@ function App() {
             </button>
             <h2 className="text-2xl font-bold mb-2">{selectedHawker.name}</h2>
             {selectedHawker.photourl && (
-              <img
-                src={selectedHawker.photourl}
-                alt={selectedHawker.name}
-                className="mb-4 rounded shadow w-full object-cover max-h-64"
-              />
+              <div className="relative w-full h-64 mb-4">
+                <Image
+                  src={selectedHawker.photourl}
+                  alt={selectedHawker.name}
+                  fill
+                  className="rounded shadow object-cover"
+                />
+              </div>
             )}
             <p className="mb-2 text-gray-300">{selectedHawker.address_myenv}</p>
             <p className="mb-4">{selectedHawker.description_myenv}</p>
