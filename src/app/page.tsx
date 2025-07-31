@@ -10,10 +10,37 @@ import { ClosureRecord } from '../types/closure';
 const CLOSURE_API_URL =
   'https://data.gov.sg/api/action/datastore_search?resource_id=d_bda4baa634dd1cc7a6c7cad5f19e2d68&limit=300';
 
+function isValidDate(day: number, month: number, year: number): boolean {
+  // Check month range
+  if (month < 1 || month > 12) return false;
+  
+  // Check day range based on month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day < 1 || day > daysInMonth) return false;
+  
+  // Check year range (allowing reasonable range)
+  const currentYear = new Date().getFullYear();
+  if (year < currentYear - 1 || year > currentYear + 5) return false;
+  
+  return true;
+}
+
 function parseDate(dateStr: string) {
   if (!dateStr || dateStr === 'TBC' || dateStr === 'NA') return null;
-  const [d, m, y] = dateStr.split('/');
-  return new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+  
+  // Check format using regex
+  const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const match = dateStr.match(dateRegex);
+  if (!match) return null;
+  
+  const [, dayStr, monthStr, yearStr] = match;
+  const day = parseInt(dayStr, 10);
+  const month = parseInt(monthStr, 10);
+  const year = parseInt(yearStr, 10);
+  
+  if (!isValidDate(day, month, year)) return null;
+  
+  return new Date(`${yearStr}-${monthStr.padStart(2, '0')}-${dayStr.padStart(2, '0')}`);
 }
 
 function isClosedOnDate(centre: ClosureRecord, date: Date) {
@@ -42,6 +69,7 @@ function App() {
     // Format as dd/mm/yyyy
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   });
+  const [dateError, setDateError] = useState<string>('');
   const [selectedHawker, setSelectedHawker] = useState<ClosureRecord | null>(null);
 
 
@@ -89,16 +117,46 @@ function App() {
       </h1>
 
       {/* Date Picker */}
-      <div className="flex justify-center mb-4">
+      <div className="flex flex-col items-center mb-4">
         <input
           type="text"
-          className="input input-bordered"
+          className={`input input-bordered ${dateError ? 'border-red-500' : ''}`}
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            setDate(newValue);
+            
+            // Clear error when input is empty
+            if (!newValue) {
+              setDateError('');
+              return;
+            }
+
+            // Validate format
+            if (!/^\d{2}\/\d{2}\/\d{4}$/.test(newValue)) {
+              setDateError('Please use format: dd/mm/yyyy');
+              return;
+            }
+
+            // Parse and validate date
+            const parsedDate = parseDate(newValue);
+            if (!parsedDate) {
+              setDateError('Invalid date');
+            } else {
+              setDateError('');
+            }
+          }}
           placeholder="dd/mm/yyyy"
           pattern="\d{2}/\d{2}/\d{4}"
           maxLength={10}
+          aria-invalid={!!dateError}
+          aria-describedby="date-error"
         />
+        {dateError && (
+          <p id="date-error" className="text-red-500 mt-1 text-sm">
+            {dateError}
+          </p>
+        )}
       </div>
 
       <SearchBar searchTerm={search} onChange={setSearch} />
