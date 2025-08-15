@@ -28,8 +28,8 @@ function isValidDate(day: number, month: number, year: number): boolean {
 function parseDate(dateStr: string) {
   if (!dateStr || dateStr === 'TBC' || dateStr === 'NA') return null;
   
-  // Check format using regex
-  const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  // Check format using regex (accept 1 or 2 digits for day/month)
+  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
   const match = dateStr.match(dateRegex);
   if (!match) return null;
   
